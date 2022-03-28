@@ -99,35 +99,6 @@ object UndoLog extends Logging {
       short_table_name = short_table_name)
   }
 
-  def addMaterialUndoLog(table_name: String,
-                         table_id: String,
-                         commit_id: String,
-                         short_table_name: String,
-                         sql_text: String,
-                         relation_tables: String,
-                         auto_update: Boolean,
-                         is_creating_view: Boolean,
-                         view_info: String): Unit = {
-    //queryInfo may very big and exceed 64kb limit, so try to split it to some fragment if value is too long
-    val view_info_index = if (view_info.length > max_size_per_value) {
-      FragmentValue.splitLargeValueIntoFragmentValues(table_id, view_info)
-    } else {
-      view_info
-    }
-
-    insertUndoLog(
-      commit_type = UndoLogType.Material.toString,
-      table_id = table_id,
-      commit_id = commit_id,
-      table_name = table_name,
-      short_table_name = short_table_name,
-      sql_text = sql_text,
-      relation_tables = relation_tables,
-      auto_update = auto_update,
-      is_creating_view = is_creating_view,
-      view_info = view_info_index)
-  }
-
   def addFileUndoLog(table_name: String,
                      table_id: String,
                      range_id: String,

@@ -90,11 +90,9 @@ object DropTableCommand {
 
     if (short_table_name.isDefined) {
       MetaVersion.deleteShortTableName(short_table_name.get, table_name)
-      //if this table is material view, clean relation info
     }
 
     UndoLog.deleteUndoLogByTableId(UndoLogType.Commit.toString, table_id)
-    UndoLog.deleteUndoLogByTableId(UndoLogType.Material.toString, table_id)
     UndoLog.deleteUndoLogByTableId(UndoLogType.ShortTableName.toString, table_id)
     UndoLog.deleteUndoLogByTableId(UndoLogType.Partition.toString, table_id)
     UndoLog.deleteUndoLogByTableId(UndoLogType.Schema.toString, table_id)

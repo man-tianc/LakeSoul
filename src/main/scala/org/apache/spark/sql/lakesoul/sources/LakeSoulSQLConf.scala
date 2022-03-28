@@ -291,7 +291,6 @@ object LakeSoulSQLConf {
       .intConf
       .createWithDefault(5)
 
-
   val PART_MERGE_FILE_SIZE_FACTOR: ConfigEntry[Double] =
     buildConf("part.merge.file.size.factor")
       .doc(
@@ -301,43 +300,4 @@ object LakeSoulSQLConf {
         """.stripMargin)
       .doubleConf
       .createWithDefault(0.1)
-
-  val ASYNC_IO_ENABLE: ConfigEntry[Boolean] =
-    buildConf("async.io.enable")
-      .doc(
-        """
-          |Whether async reader/writer can be used.
-        """.stripMargin)
-      .booleanConf
-      .createWithDefault(true)
-
-  val AUTO_UPDATE_MATERIAL_VIEW_ENABLE: ConfigEntry[Boolean] =
-    buildConf("auto.update.materialView.enable")
-      .doc(
-        """
-          |Whether update material views when data changed.
-          |If true, it will check all material views associate with
-        """.stripMargin)
-      .booleanConf
-      .createWithDefault(false)
-
-  val ALLOW_STALE_MATERIAL_VIEW: ConfigEntry[Boolean] =
-    buildConf("allow.stale.materialView")
-      .doc(
-        """
-          |If true, material view with stale data will be read.
-        """.stripMargin)
-      .booleanConf
-      .createWithDefault(false)
-
-  val MATERIAL_QUERY_REWRITE_ENABLE: ConfigEntry[Boolean] =
-    buildConf("material.query.rewrite.enable")
-      .doc(
-        """
-          |If true, material view can be used to rewrite query plan.
-        """.stripMargin)
-      .booleanConf
-      .createWithDefault(true)
-
-
 }

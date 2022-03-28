@@ -36,8 +36,8 @@
             <version>${spark.cassandra.connector.version}</version>
             <exclusions>
                 <exclusion>
-                    <artifactId>netty-all</artifactId>
                     <groupId>io.netty</groupId>
+                    <artifactId>*</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -70,16 +70,6 @@
             <artifactId>spark-core_${scala.binary.version}</artifactId>
             <version>${spark.version}</version>
             <scope>${local.scope}</scope>
-            <!--            <exclusions>-->
-            <!--                <exclusion>-->
-            <!--                    <artifactId>scala-library</artifactId>-->
-            <!--                    <groupId>org.scala-lang</groupId>-->
-            <!--                </exclusion>-->
-            <!--                <exclusion>-->
-            <!--                    <artifactId>netty-all</artifactId>-->
-            <!--                    <groupId>io.netty</groupId>-->
-            <!--                </exclusion>-->
-            <!--            </exclusions>-->
         </dependency>
 
         <dependency>
@@ -87,20 +77,6 @@
             <artifactId>spark-sql_${scala.binary.version}</artifactId>
             <version>${spark.version}</version>
             <scope>${local.scope}</scope>
-            <exclusions>
-                <exclusion>
-                    <artifactId>parquet-jackson</artifactId>
-                    <groupId>org.apache.parquet</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>parquet-hadoop</artifactId>
-                    <groupId>org.apache.parquet</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>parquet-column</artifactId>
-                    <groupId>org.apache.parquet</groupId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
         <dependency>
@@ -116,14 +92,6 @@
             <version>${spark.version}</version>
             <scope>${local.scope}</scope>
         </dependency>
-
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-all</artifactId>
-            <version>4.1.47.Final</version>
-            <scope>compile</scope>
-        </dependency>
-
 
         <!--hive-->
         <dependency>
@@ -183,20 +151,6 @@
             <artifactId>spark-sql_${scala.binary.version}</artifactId>
             <version>${spark.version}</version>
             <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <artifactId>parquet-jackson</artifactId>
-                    <groupId>org.apache.parquet</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>parquet-hadoop</artifactId>
-                    <groupId>org.apache.parquet</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>parquet-column</artifactId>
-                    <groupId>org.apache.parquet</groupId>
-                </exclusion>
-            </exclusions>
             <classifier>tests</classifier>
         </dependency>
 
@@ -247,29 +201,6 @@
             <groupId>com.alibaba</groupId>
             <artifactId>fastjson</artifactId>
             <version>1.2.75</version>
-        </dependency>
-
-
-        <dependency>
-            <groupId>org.apache.parquet</groupId>
-            <artifactId>parquet-hadoop</artifactId>
-            <version>${parquet.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.parquet</groupId>
-            <artifactId>parquet-common</artifactId>
-            <version>${parquet.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.parquet</groupId>
-            <artifactId>parquet-encoding</artifactId>
-            <version>${parquet.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.parquet</groupId>
-            <artifactId>parquet-column</artifactId>
-            <version>${parquet.version}</version>
         </dependency>
     </dependencies>
 

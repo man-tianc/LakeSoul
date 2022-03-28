@@ -58,8 +58,8 @@ case class TableInfo(table_name: String,
                      bucket_num: Int = -1,
                      configuration: Map[String, String] = Map.empty,
                      schema_version: Int = 1,
-                     short_table_name: Option[String] = None,
-                     is_material_view: Boolean = false) {
+                     short_table_name: Option[String] = None
+                     ) {
 
   lazy val table_path: Path = new Path(table_name)
   lazy val range_partition_columns: Seq[String] = range_partition_schema.fieldNames

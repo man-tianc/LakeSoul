@@ -43,18 +43,8 @@ object LakeSoulUtils extends PredicateHelper {
   val MERGE_OP_COL = "_lakesoul_merge_col_name_"
   val MERGE_OP = "_lakesoul_merge_op_"
 
-  lazy val USE_MATERIAL_REWRITE = "_lakesoul_use_material_rewrite_"
-
-
   def executeWithoutQueryRewrite[T](sparkSession: SparkSession)(f: => T): Unit = {
-    sparkSession.conf.set(USE_MATERIAL_REWRITE, "false")
     f
-    sparkSession.conf.set(USE_MATERIAL_REWRITE, "true")
-  }
-
-  def enableAsyncIO(tablePath: String, conf: SQLConf): Boolean = {
-    val validFormat = tablePath.startsWith("s3") || tablePath.startsWith("oss")
-    validFormat && conf.getConf(LakeSoulSQLConf.ASYNC_IO_ENABLE)
   }
 
   def getClass(className: String): Class[_] = {

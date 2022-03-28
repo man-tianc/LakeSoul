@@ -99,25 +99,6 @@ trait LakeSoulWriteOptionsImpl extends LakeSoulOptionParser {
       Some(shortTableName)
     }
   }
-
-  def createMaterialView: Boolean = {
-    options.get(CREATE_MATERIAL_VIEW).exists(toBoolean(_, CREATE_MATERIAL_VIEW))
-  }
-
-  def updateMaterialView: Boolean = {
-    options.get(UPDATE_MATERIAL_VIEW).exists(toBoolean(_, UPDATE_MATERIAL_VIEW))
-  }
-
-  def materialSQLText: String = {
-    options.get(MATERIAL_SQL_TEXT).getOrElse("")
-  }
-
-  def materialAutoUpdate: Boolean = {
-    options.get(MATERIAL_AUTO_UPDATE)
-      .exists(toBoolean(_, MATERIAL_AUTO_UPDATE))
-  }
-
-
 }
 
 /**
@@ -129,7 +110,6 @@ class LakeSoulOptions(@transient protected[lakesoul] val options: CaseInsensitiv
 
   def this(options: Map[String, String], conf: SQLConf) = this(CaseInsensitiveMap(options), conf)
 }
-
 
 object LakeSoulOptions {
 
@@ -146,11 +126,6 @@ object LakeSoulOptions {
   val HASH_BUCKET_NUM = "hashBucketNum"
 
   val SHORT_TABLE_NAME = "shortTableName"
-
-  val CREATE_MATERIAL_VIEW = "createLakeSoulMaterialView"
-  val UPDATE_MATERIAL_VIEW = "updateLakeSoulMaterialView"
-  val MATERIAL_SQL_TEXT = "materialSQLText"
-  val MATERIAL_AUTO_UPDATE = "materialAutoUpdate"
 
   /** whether it is allowed to use delta file */
   val AllowDeltaFile = "allowDeltaFile"

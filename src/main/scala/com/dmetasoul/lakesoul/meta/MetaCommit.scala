@@ -42,9 +42,6 @@ object MetaCommit extends Logging {
       meta_info.batch_id)
 
     try {
-      //add undo log and take locks for short table name and material view
-      takeLockOfShortTableNameAndMaterialView(meta_info.table_info, commitOptions, commit_id)
-
       //hold all needed partition lock
       var new_meta_info = takePartitionsWriteLock(meta_info, commit_id)
 
@@ -52,6 +49,8 @@ object MetaCommit extends Logging {
       if (changeSchema) {
         takeSchemaLock(new_meta_info)
       }
+
+      processShortTableName(new_meta_info, commitOptions)
 
       //update write version, compaction info, delta file num
       new_meta_info = updatePartitionInfoAndGetNewMetaInfo(new_meta_info)
@@ -94,7 +93,6 @@ object MetaCommit extends Logging {
 
   }
 
-
   //add commit type undo log, generate commit id
   def generateCommitIdToAddUndoLog(table_name: String,
                                    table_id: String,
@@ -109,7 +107,6 @@ object MetaCommit extends Logging {
       commit_id
     }
   }
-
 
   def isCommitTimeout(timestamp: Long): Boolean = {
     val timeout = System.currentTimeMillis() - timestamp
@@ -156,19 +153,20 @@ object MetaCommit extends Logging {
     }
   }
 
-  def takeLockOfShortTableNameAndMaterialView(tableInfo: TableInfo,
-                                              commitOptions: CommitOptions,
-                                              commit_id: String): Unit = {
-    //lock short table name if defined, it will quickly failed when another user committing the same name
+  def processShortTableName(new_meta_info: MetaInfo, commitOptions: CommitOptions): Unit = {
+    //set short name for this table
     if (commitOptions.shortTableName.isDefined) {
-      //add short table name undo log
-      addShortTableNameUndoLog(table_name = tableInfo.table_name,
-        table_id = tableInfo.table_id,
-        commit_id = commit_id,
-        short_table_name = commitOptions.shortTableName.get
+      //add short name to table_info
+      MetaVersion.updateTableShortName(
+        new_meta_info.table_info.table_name,
+        new_meta_info.table_info.table_id,
+        commitOptions.shortTableName.get)
+
+      deleteUndoLog(
+        commit_type = UndoLogType.ShortTableName.toString,
+        table_id = new_meta_info.table_info.table_id,
+        commit_id = new_meta_info.commit_id
       )
-      //add short name relation
-      MetaVersion.addShortTableName(commitOptions.shortTableName.get, tableInfo.table_name)
     }
   }
 

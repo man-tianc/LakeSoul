@@ -77,7 +77,6 @@ object RollBack extends Logging {
     logInfo("roll back other commit~~~   ")
     if (markOtherCommitRollBack(table_id, commit_id, tag, timestamp)) {
       rollBackShortTableName(table_id, commit_id)
-      rollBackMaterialView(table_id, commit_id)
       rollBackSchemaLock(table_id, commit_id)
       rollBackAddedFile(table_id, commit_id)
       rollBackExpiredFile(table_id, commit_id)
@@ -93,7 +92,6 @@ object RollBack extends Logging {
     logInfo("clean roll back other commit~~~  ")
 
     rollBackShortTableName(table_id, commit_id)
-    rollBackMaterialView(table_id, commit_id)
     rollBackSchemaLock(table_id, commit_id)
     rollBackAddedFile(table_id, commit_id)
     rollBackExpiredFile(table_id, commit_id)
@@ -137,17 +135,4 @@ object RollBack extends Logging {
       deleteUndoLog(UndoLogType.ShortTableName.toString, table_id, commit_id)
     }
   }
-
-  private def rollBackMaterialView(table_id: String, commit_id: String): Unit = {
-    val info = getUndoLogInfo(UndoLogType.Material.toString, table_id, commit_id)
-    if (info.nonEmpty) {
-      //delete undo log
-      deleteUndoLog(
-        commit_type = UndoLogType.Material.toString,
-        table_id = table_id,
-        commit_id = commit_id)
-    }
-  }
-
-
 }

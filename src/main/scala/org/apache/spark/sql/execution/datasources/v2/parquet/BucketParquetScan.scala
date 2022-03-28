@@ -85,26 +85,9 @@ case class BucketParquetScan(sparkSession: SparkSession,
     val broadcastedConf = sparkSession.sparkContext.broadcast(
       new SerializableConfiguration(hadoopConf))
 
-    val enableAsyncIO = LakeSoulUtils.enableAsyncIO(tableInfo.table_name, sparkSession.sessionState.conf)
-
-    val asyncFactoryName = "org.apache.spark.sql.execution.datasources.v2.parquet.ParquetPartitionAsyncReaderFactory"
-    val (hasAsyncClass, cls) = LakeSoulUtils.getAsyncClass(asyncFactoryName)
-
-    if (enableAsyncIO && hasAsyncClass) {
-      logInfo("================  async bucket scan   ==============================")
-
-      cls.getConstructors()(0)
-        .newInstance(sparkSession.sessionState.conf, broadcastedConf,
-          dataSchema, readDataSchema, readPartitionSchema, pushedFilters)
-        .asInstanceOf[PartitionReaderFactory]
-
-    } else {
-      logInfo("================  bucket scan no async  ==============================")
-
-      ParquetPartitionReaderFactory(sparkSession.sessionState.conf, broadcastedConf,
-        dataSchema, readDataSchema, readPartitionSchema, pushedFilters,
-        new ParquetOptions(options.asCaseSensitiveMap.asScala.toMap, sqlConf))
-    }
+    ParquetPartitionReaderFactory(sparkSession.sessionState.conf, broadcastedConf,
+      dataSchema, readDataSchema, readPartitionSchema, pushedFilters,
+      new ParquetOptions(options.asCaseSensitiveMap.asScala.toMap, sqlConf))
   }
 
   override def equals(obj: Any): Boolean = obj match {
