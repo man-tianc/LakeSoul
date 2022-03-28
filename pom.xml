@@ -11,12 +11,12 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <!-- 编译时的编码 -->
         <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
-        <scala.version>2.12.10</scala.version>
+        <scala.version>2.12.15</scala.version>
         <scala.binary.version>2.12</scala.binary.version>
-        <spark.version>3.1.1</spark.version>
+        <spark.version>3.2.1</spark.version>
         <scalatest.version>3.1.0</scalatest.version>
         <hive.version>0.13.0</hive.version>
-        <parquet.version>1.11.0</parquet.version>
+        <parquet.version>1.12.2</parquet.version>
         <local.scope>provided</local.scope>
         <spark.cassandra.connector.version>2.4.3</spark.cassandra.connector.version>
     </properties>
@@ -40,14 +40,6 @@
                     <groupId>io.netty</groupId>
                 </exclusion>
             </exclusions>
-            <!--<scope>provided</scope>-->
-        </dependency>
-
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>14.0.1</version>
-            <scope>provided</scope>
         </dependency>
 
         <!-- scala deps -->
