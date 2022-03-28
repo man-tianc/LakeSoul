@@ -17,11 +17,12 @@
 package org.apache.spark.sql.execution.datasources.v2.merge.parquet
 
 import org.apache.hadoop.fs.Path
+import org.apache.hadoop.mapred.{FileSplit, JobConf}
 import org.apache.hadoop.mapreduce._
 import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl
 import org.apache.parquet.filter2.predicate.{FilterApi, FilterPredicate}
 import org.apache.parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS
-import org.apache.parquet.hadoop.{ParquetFileReader, ParquetInputFormat, ParquetInputSplit}
+import org.apache.parquet.hadoop.{ParquetFileReader, ParquetInputFormat}
 import org.apache.spark.TaskContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.internal.Logging
@@ -119,7 +120,7 @@ case class MergeParquetPartitionReaderFactory(sqlConf: SQLConf,
     vectorizedReader
   }
 
-  private def createVectorizedReader(split: ParquetInputSplit,
+  private def createVectorizedReader(split: FileSplit,
                                      partitionValues: InternalRow,
                                      hadoopAttemptContext: TaskAttemptContextImpl,
                                      pushed: Option[FilterPredicate],
@@ -144,14 +145,15 @@ case class MergeParquetPartitionReaderFactory(sqlConf: SQLConf,
 
   private def buildReaderBase[T](file: MergePartitionedFile,
                                  buildReaderFunc: (
-                                   ParquetInputSplit, InternalRow, TaskAttemptContextImpl,
+                                   FileSplit, InternalRow, TaskAttemptContextImpl,
                                      Option[FilterPredicate], Option[ZoneId],
                                      RebaseSpec,
                                      RebaseSpec) => RecordReader[Void, T]): RecordReader[Void, T] = {
     val conf = broadcastedConf.value.value
 
     val filePath = new Path(new URI(file.filePath))
-    val split =
+    val split = {
+      /*
       new org.apache.parquet.hadoop.ParquetInputSplit(
         filePath,
         file.start,
@@ -159,6 +161,9 @@ case class MergeParquetPartitionReaderFactory(sqlConf: SQLConf,
         file.length,
         Array.empty,
         null)
+       */
+      new FileSplit(filePath, file.start, file.length, new JobConf())
+    }
 
     lazy val footerFileMetaData =
       ParquetFileReader.readFooter(conf, filePath, SKIP_ROW_GROUPS).getFileMetaData

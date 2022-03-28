@@ -106,7 +106,7 @@ trait DDLUsingPathTests extends QueryTest
       val ex = intercept[AnalysisException] {
         spark.table(s"lakesoul.`/path/to/lakesoul`")
       }
-      assert(ex.getMessage.contains("Table or view not found: lakesoul./path/to/lakesoul"))
+      assert(ex.getMessage.contains("Table or view not found: lakesoul.`/path/to/lakesoul`"))
     }
   }
 

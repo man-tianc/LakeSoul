@@ -23,7 +23,7 @@ import org.apache.spark.sql.lakesoul.sources.LakeSoulSQLConf
 import org.apache.spark.sql.lakesoul.test.{MergeOpInt, MergeOpString02, LakeSoulTestUtils}
 import org.apache.spark.sql.test.SharedSparkSession
 
-class LakeSoulPartFileMergeSuiteSoul extends QueryTest
+class LakeSoulPartFileMergeSuite extends QueryTest
   with SharedSparkSession with LakeSoulTestUtils {
 
   import testImplicits._
