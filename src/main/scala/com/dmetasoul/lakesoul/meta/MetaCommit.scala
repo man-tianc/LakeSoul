@@ -42,6 +42,8 @@ object MetaCommit extends Logging {
       meta_info.batch_id)
 
     try {
+      takeLockOfShortTableName(meta_info.table_info, commitOptions, commit_id)
+
       //hold all needed partition lock
       var new_meta_info = takePartitionsWriteLock(meta_info, commit_id)
 
@@ -49,8 +51,6 @@ object MetaCommit extends Logging {
       if (changeSchema) {
         takeSchemaLock(new_meta_info)
       }
-
-      processShortTableName(new_meta_info, commitOptions)
 
       //update write version, compaction info, delta file num
       new_meta_info = updatePartitionInfoAndGetNewMetaInfo(new_meta_info)
@@ -68,6 +68,8 @@ object MetaCommit extends Logging {
       if (changeSchema) {
         updateSchema(new_meta_info)
       }
+
+      processShortTableName(new_meta_info, commitOptions)
 
       //add/update files info to table data_info, release partition lock and delete undo log
       commitMetaInfo(new_meta_info, changeSchema)
@@ -150,6 +152,22 @@ object MetaCommit extends Logging {
           commitStateInfo(CommitState.RollBackTimeout, table_name, table_id, commit_id, tag, last_timestamp)
         }
       }
+    }
+  }
+
+  def takeLockOfShortTableName(tableInfo: TableInfo,
+                               commitOptions: CommitOptions,
+                               commit_id: String): Unit = {
+    //lock short table name if defined, it will quickly failed when another user committing the same name
+    if (commitOptions.shortTableName.isDefined) {
+      //add short table name undo log
+      addShortTableNameUndoLog(table_name = tableInfo.table_name,
+        table_id = tableInfo.table_id,
+        commit_id = commit_id,
+        short_table_name = commitOptions.shortTableName.get
+      )
+      //add short name relation
+      MetaVersion.addShortTableName(commitOptions.shortTableName.get, tableInfo.table_name)
     }
   }
 

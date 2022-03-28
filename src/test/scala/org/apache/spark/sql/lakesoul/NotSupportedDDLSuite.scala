@@ -94,10 +94,11 @@ abstract class NotSupportedDDLBase extends QueryTest
   }
 
   private def assertUnsupported(query: String, messages: String*): Unit = {
-    val allErrMessages = "operation not allowed" +: messages
+    val allErrMessages = "operation not allowed" +: "is not supported" +: messages
     val e = intercept[AnalysisException] {
       sql(query)
     }
+    Console.err.println(e.getMessage())
     assert(allErrMessages.exists(err => e.getMessage.toLowerCase(Locale.ROOT).contains(err)))
   }
 
@@ -133,12 +134,12 @@ abstract class NotSupportedDDLBase extends QueryTest
 
   test("ALTER TABLE ADD PARTITION") {
     assertUnsupported(s"ALTER TABLE $partitionedTableName ADD PARTITION (p1=3)",
-      "can not alter partitions")
+      "does not support partition management")
   }
 
   test("ALTER TABLE DROP PARTITION") {
     assertUnsupported(s"ALTER TABLE $partitionedTableName DROP PARTITION (p1=2)",
-      "can not alter partitions")
+      "does not support partition management")
   }
 
   test("ALTER TABLE RECOVER PARTITIONS") {

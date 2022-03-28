@@ -180,7 +180,7 @@ object MetaVersion {
       val res = session.execute(
         s"""
            |select table_id,table_schema,range_column,hash_column,setting,read_version,bucket_num,
-           |short_table_name,is_material_view
+           |short_table_name
            |from $database.table_info where table_name='$table_name'
       """.stripMargin).one()
       val table_id = res.getString("table_id")

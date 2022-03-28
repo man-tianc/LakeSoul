@@ -119,10 +119,11 @@ trait Transaction extends TransactionalWrite with Logging {
   def setShortTableName(value: String): Unit = {
     assert(!new Path(value).isAbsolute, s"Short Table name `$value` can't be a path")
     assert(shortTableName.isEmpty, "Cannot set short table name more than once in a transaction.")
-    assert(tableInfo.short_table_name.isEmpty || tableInfo.short_table_name.get.equals(value),
-      s"Table `$table_name` already has a short name `${tableInfo.short_table_name.get}`, " +
+    val tbInfo = tableInfo
+    assert(tbInfo.short_table_name.isEmpty || tbInfo.short_table_name.get.equals(value),
+      s"Table `$table_name` already has a short name `${tbInfo.short_table_name.get}`, " +
         s"you can't change it to `$value`")
-    if (tableInfo.short_table_name.isEmpty) {
+    if (tbInfo.short_table_name.isEmpty) {
       shortTableName = Some(value)
     }
   }
