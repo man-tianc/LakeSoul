@@ -148,7 +148,7 @@ case class LakeSoulTableV2(spark: SparkSession,
 
 private class WriteIntoTableBuilder(snapshotManagement: SnapshotManagement,
                                     writeOptions: CaseInsensitiveStringMap)
-  extends WriteBuilder with V1WriteBuilder with SupportsOverwrite with SupportsTruncate {
+  extends WriteBuilder with SupportsOverwrite with SupportsTruncate {
 
   private var forceOverwrite = false
 
@@ -170,25 +170,26 @@ private class WriteIntoTableBuilder(snapshotManagement: SnapshotManagement,
     this
   }
 
-  override def buildForV1Write(): InsertableRelation = {
-    new InsertableRelation {
-      override def insert(data: DataFrame, overwrite: Boolean): Unit = {
-        val session = data.sparkSession
+  override def build(): V1Write = {
+    new V1Write {
+      override def toInsertableRelation: InsertableRelation =
+        (data: DataFrame, overwrite: Boolean) => {
+          val session = data.sparkSession
 
-        WriteIntoTable(
-          snapshotManagement,
-          if (forceOverwrite) SaveMode.Overwrite else SaveMode.Append,
-          new LakeSoulOptions(options.toMap, session.sessionState.conf),
-          //          Nil,
-          snapshotManagement.snapshot.getTableInfo.configuration,
-          data).run(session)
+          WriteIntoTable(
+            snapshotManagement,
+            if (forceOverwrite) SaveMode.Overwrite else SaveMode.Append,
+            new LakeSoulOptions(options.toMap, session.sessionState.conf),
+            //          Nil,
+            snapshotManagement.snapshot.getTableInfo.configuration,
+            data).run(session)
 
-        // TODO: Push this to Apache Spark
-        // Re-cache all cached plans(including this relation itself, if it's cached) that refer
-        // to this data source relation. This is the behavior for InsertInto
-        session.sharedState.cacheManager.recacheByPlan(
-          session, LogicalRelation(snapshotManagement.createRelation()))
-      }
+          // TODO: Push this to Apache Spark
+          // Re-cache all cached plans(including this relation itself, if it's cached) that refer
+          // to this data source relation. This is the behavior for InsertInto
+          session.sharedState.cacheManager.recacheByPlan(
+            session, LogicalRelation(snapshotManagement.createRelation()))
+        }
     }
   }
 }

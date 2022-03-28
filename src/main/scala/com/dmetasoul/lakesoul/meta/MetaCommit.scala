@@ -16,18 +16,16 @@
 
 package com.dmetasoul.lakesoul.meta
 
-import java.util.concurrent.TimeUnit
-
-import Redo._
-import RollBack._
-import UndoLog._
+import com.dmetasoul.lakesoul.meta.Redo._
+import com.dmetasoul.lakesoul.meta.RollBack._
+import com.dmetasoul.lakesoul.meta.UndoLog._
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.lakesoul.Snapshot
 import org.apache.spark.sql.lakesoul.commands.{DropPartitionCommand, DropTableCommand}
 import org.apache.spark.sql.lakesoul.exception._
-import org.apache.spark.sql.lakesoul.material_view.ConstructQueryInfo
 import org.apache.spark.sql.lakesoul.utils._
 
+import java.util.concurrent.TimeUnit
 import scala.collection.mutable.ArrayBuffer
 
 object MetaCommit extends Logging {
@@ -71,9 +69,6 @@ object MetaCommit extends Logging {
       if (changeSchema) {
         updateSchema(new_meta_info)
       }
-
-      //process short table name and material view
-      processShortTableNameAndMaterialView(new_meta_info, commitOptions)
 
       //add/update files info to table data_info, release partition lock and delete undo log
       commitMetaInfo(new_meta_info, changeSchema)
@@ -174,111 +169,6 @@ object MetaCommit extends Logging {
       )
       //add short name relation
       MetaVersion.addShortTableName(commitOptions.shortTableName.get, tableInfo.table_name)
-    }
-    //if this table is a material view
-    if (commitOptions.materialInfo.isDefined) {
-      val materialInfo = commitOptions.materialInfo.get
-      val shortTableName = if (materialInfo.isCreatingView) {
-        commitOptions.shortTableName.get
-      } else {
-        tableInfo.short_table_name.get
-      }
-      //add material undo log
-      addMaterialUndoLog(table_name = tableInfo.table_name,
-        table_id = tableInfo.table_id,
-        commit_id = commit_id,
-        short_table_name = shortTableName,
-        sql_text = materialInfo.sqlText,
-        relation_tables = materialInfo.relationTables.map(_.toString).mkString(","),
-        auto_update = materialInfo.autoUpdate,
-        is_creating_view = materialInfo.isCreatingView,
-        view_info = ConstructQueryInfo.buildJson(materialInfo.info))
-
-      //lock material view table to prevent changes by other commit
-      lockMaterialViewName(
-        commit_id,
-        shortTableName,
-        materialInfo.isCreatingView)
-
-      if (materialInfo.isCreatingView) {
-        //lock material relation table to prevent changes on relation tables by other commit
-        commitOptions.materialInfo.get.relationTables.foreach(table => {
-          lockMaterialRelation(commit_id = commit_id, table_id = table.tableId, table_name = table.tableName)
-        })
-      }
-    }
-  }
-
-  def processShortTableNameAndMaterialView(new_meta_info: MetaInfo, commitOptions: CommitOptions): Unit = {
-    //set short name for this table
-    if (commitOptions.shortTableName.isDefined) {
-      //add short name to table_info
-      MetaVersion.updateTableShortName(
-        new_meta_info.table_info.table_name,
-        new_meta_info.table_info.table_id,
-        commitOptions.shortTableName.get)
-
-      deleteUndoLog(
-        commit_type = UndoLogType.ShortTableName.toString,
-        table_id = new_meta_info.table_info.table_id,
-        commit_id = new_meta_info.commit_id
-      )
-    }
-    //if this table is a material view
-    if (commitOptions.materialInfo.isDefined) {
-      val materialInfo = commitOptions.materialInfo.get
-      val shortTableName = if (commitOptions.shortTableName.isDefined) {
-        commitOptions.shortTableName.get
-      } else {
-        new_meta_info.table_info.short_table_name.get
-      }
-      if (materialInfo.isCreatingView) {
-        //queryInfo may very big and exceed 64kb limit, so try to split it to some fragment if value is too long
-        val view_info_index = getUndoLogInfo(
-          UndoLogType.Material.toString,
-          new_meta_info.table_info.table_id,
-          new_meta_info.commit_id)
-          .head.view_info
-        //add material view
-        MaterialView.addMaterialView(
-          shortTableName,
-          new_meta_info.table_info.table_name,
-          new_meta_info.table_info.table_id,
-          materialInfo.relationTables.map(_.toString).mkString(","),
-          materialInfo.sqlText,
-          materialInfo.autoUpdate,
-          view_info_index)
-        //unlock material view
-        unlockMaterialViewName(new_meta_info.commit_id, shortTableName)
-
-        //update material relation
-        materialInfo.relationTables.foreach(table => {
-          //update
-          updateMaterialRelation(
-            table_id = table.tableId,
-            table_name = table.tableName,
-            view_name = shortTableName)
-          //unlock material relation
-          unlockMaterialRelation(commit_id = new_meta_info.commit_id, table_id = table.tableId)
-        })
-      } else {
-        //update material view
-        val view_name = new_meta_info.table_info.short_table_name.get
-        MaterialView.updateMaterialView(
-          view_name,
-          materialInfo.relationTables.map(_.toString).mkString(","),
-          materialInfo.autoUpdate
-        )
-        //unlock material view
-        unlockMaterialViewName(new_meta_info.commit_id, view_name)
-      }
-
-      //delete undo log
-      deleteUndoLog(
-        commit_type = UndoLogType.Material.toString,
-        table_id = new_meta_info.table_info.table_id,
-        commit_id = new_meta_info.commit_id)
-
     }
   }
 
@@ -427,52 +317,6 @@ object MetaCommit extends Logging {
       case e: Throwable => throw e
     }
 
-  }
-
-  def updateMaterialRelation(table_id: String,
-                             table_name: String,
-                             view_name: String): Unit = {
-    val existsViews = MaterialView.getMaterialRelationInfo(table_id)
-    val newViews = if (existsViews.isEmpty) {
-      view_name
-    } else {
-      existsViews + "," + view_name
-    }
-
-    MaterialView.updateMaterialRelationInfo(table_id, table_name, newViews)
-  }
-
-
-  def formatLockMaterialView(name: String): String = {
-    s"material_$name"
-  }
-
-  def lockMaterialViewName(commit_id: String, materialViewName: String, isCreating: Boolean): Unit = {
-    val (lock_flag, last_commit_id) = MetaLock.lock(formatLockMaterialView(materialViewName), commit_id)
-    lazy val table_exists = MaterialView.isMaterialViewExists(materialViewName)
-    if (!lock_flag || (isCreating && table_exists)) {
-      //filed quickly if another user is creating or material view is already created very recently
-      throw LakeSoulErrors.failedLockMaterialViewName(materialViewName)
-    }
-  }
-
-  def unlockMaterialViewName(commit_id: String, materialViewName: String): Unit = {
-    MetaLock.unlock(formatLockMaterialView(materialViewName), commit_id)
-  }
-
-  def lockMaterialRelation(commit_id: String, table_id: String, table_name: String): Unit = {
-    val (lock_flag, last_commit_id) = MetaLock.lock(formatLockMaterialView(table_id), commit_id)
-    if (!lock_flag) {
-      //check state and resolve last commit
-      resolveLastCommit(table_name, table_id, last_commit_id)
-
-      //retry
-      lockMaterialRelation(commit_id, table_id, table_name)
-    }
-  }
-
-  def unlockMaterialRelation(commit_id: String, table_id: String): Unit = {
-    MetaLock.unlock(formatLockMaterialView(table_id), commit_id)
   }
 
   def lockSchema(meta_info: MetaInfo): Unit = {
@@ -788,13 +632,6 @@ object MetaCommit extends Logging {
             MetaLock.unlock(log.table_id, log.commit_id)
           case t: String if t.equalsIgnoreCase(UndoLogType.Partition.toString) =>
             MetaLock.unlock(log.range_id, log.commit_id)
-          case t: String if t.equalsIgnoreCase(UndoLogType.Material.toString) =>
-            unlockMaterialViewName(commit_id = log.commit_id, log.short_table_name)
-            log.relation_tables.split(",").map(m => RelationTable.build(m))
-              .foreach(table => {
-                unlockMaterialRelation(commit_id = log.commit_id, table_id = table.tableId)
-              })
-
         }
         deleteUndoLog(log.commit_type, table_id, log.commit_id, log.range_id, log.file_path)
       })

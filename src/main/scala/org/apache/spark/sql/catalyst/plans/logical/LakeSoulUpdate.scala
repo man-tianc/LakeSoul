@@ -31,11 +31,14 @@ case class LakeSoulUpdate(child: LogicalPlan,
                           updateColumns: Seq[NamedExpression],
                           updateExpressions: Seq[Expression],
                           condition: Option[Expression])
-  extends UnaryNode {
+  extends UnaryCommand {
 
   assert(updateColumns.size == updateExpressions.size)
 
   override def output: Seq[Attribute] = Seq.empty
+
+  override protected def withNewChildInternal(newChild: LogicalPlan): LogicalPlan =
+    copy(child = newChild)
 }
 
 

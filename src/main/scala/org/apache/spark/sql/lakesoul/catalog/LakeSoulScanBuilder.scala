@@ -16,28 +16,27 @@
 
 package org.apache.spark.sql.lakesoul.catalog
 
-import com.dmetasoul.lakesoul.meta.{MaterialView, MetaCommit}
+import com.dmetasoul.lakesoul.meta.MetaCommit
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.expressions
 import org.apache.spark.sql.catalyst.expressions.Expression
+import org.apache.spark.sql.catalyst.util.RebaseDateTime.RebaseSpec
 import org.apache.spark.sql.connector.read.{Scan, SupportsPushDownFilters}
 import org.apache.spark.sql.execution.datasources.parquet.{ParquetFilters, SparkToParquetSchemaConverter}
 import org.apache.spark.sql.execution.datasources.v2.FileScanBuilder
 import org.apache.spark.sql.execution.datasources.v2.merge.{MultiPartitionMergeBucketScan, MultiPartitionMergeScan, OnePartitionMergeBucketScan}
 import org.apache.spark.sql.execution.datasources.v2.parquet.{BucketParquetScan, ParquetScan}
-import org.apache.spark.sql.sources.Filter
-import org.apache.spark.sql.lakesoul.exception.LakeSoulErrors
-import org.apache.spark.sql.lakesoul.material_view.MaterialViewUtils
+import org.apache.spark.sql.internal.SQLConf.LegacyBehaviorPolicy
 import org.apache.spark.sql.lakesoul.sources.{LakeSoulSQLConf, LakeSoulSourceUtils}
-import org.apache.spark.sql.lakesoul.utils.{RelationTable, TableInfo}
+import org.apache.spark.sql.lakesoul.utils.TableInfo
 import org.apache.spark.sql.lakesoul.{LakeSoulFileIndexV2, LakeSoulUtils}
+import org.apache.spark.sql.sources.Filter
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable.ArrayBuffer
 
 
 case class LakeSoulScanBuilder(sparkSession: SparkSession,
@@ -65,7 +64,8 @@ case class LakeSoulScanBuilder(sparkSession: SparkSession,
     val parquetSchema =
       new SparkToParquetSchemaConverter(sparkSession.sessionState.conf).convert(schema)
     val parquetFilters = new ParquetFilters(parquetSchema, pushDownDate, pushDownTimestamp,
-      pushDownDecimal, pushDownStringStartWith, pushDownInFilterThreshold, isCaseSensitive)
+      pushDownDecimal, pushDownStringStartWith, pushDownInFilterThreshold, isCaseSensitive,
+      RebaseSpec(LegacyBehaviorPolicy.CORRECTED))
     parquetFilters.convertibleFilters(this.filters).toArray
   }
 
@@ -100,30 +100,6 @@ case class LakeSoulScanBuilder(sparkSession: SparkSession,
   override def build(): Scan = {
     //check and redo commit before read
     MetaCommit.checkAndRedoCommit(fileIndex.snapshotManagement.snapshot)
-
-    //if table is a material view, quickly failed if data is stale
-    if (tableInfo.is_material_view
-      && !sparkSession.sessionState.conf.getConf(LakeSoulSQLConf.ALLOW_STALE_MATERIAL_VIEW)) {
-
-      //forbid using material rewrite this plan
-      LakeSoulUtils.executeWithoutQueryRewrite(sparkSession) {
-        val materialInfo = MaterialView.getMaterialViewInfo(tableInfo.short_table_name.get)
-        assert(materialInfo.isDefined)
-
-        val data = sparkSession.sql(materialInfo.get.sqlText)
-        val currentRelationTableVersion = new ArrayBuffer[RelationTable]()
-        MaterialViewUtils.parseRelationTableInfo(data.queryExecution.executedPlan, currentRelationTableVersion)
-        val currentRelationTableVersionMap = currentRelationTableVersion.map(m => (m.tableName, m)).toMap
-        val isConsistent = materialInfo.get.relationTables.forall(f => {
-          val currentVersion = currentRelationTableVersionMap(f.tableName)
-          f.toString.equals(currentVersion.toString)
-        })
-
-        if (!isConsistent) {
-          throw LakeSoulErrors.materialViewHasStaleDataException(tableInfo.short_table_name.get)
-        }
-      }
-    }
 
     val fileInfo = fileIndex.getFileInfo(Seq(parseFilter())).groupBy(_.range_partitions)
     val onlyOnePartition = fileInfo.size <= 1

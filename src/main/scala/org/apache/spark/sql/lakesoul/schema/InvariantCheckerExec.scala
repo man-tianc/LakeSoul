@@ -35,6 +35,9 @@ case class InvariantCheckerExec(child: SparkPlan,
 
   override def output: Seq[Attribute] = child.output
 
+  override protected def withNewChildInternal(newChild: SparkPlan): SparkPlan =
+    copy(child = newChild)
+
   private def isNullNotOkay(invariant: Invariant): Boolean = invariant.rule match {
     case NotNull => true
     case _ => false

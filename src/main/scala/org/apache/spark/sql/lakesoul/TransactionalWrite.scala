@@ -28,7 +28,7 @@ import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.lakesoul.exception.LakeSoulErrors
 import org.apache.spark.sql.lakesoul.schema.{InvariantCheckerExec, Invariants, SchemaUtils}
 import org.apache.spark.sql.lakesoul.sources.LakeSoulSQLConf
-import org.apache.spark.sql.lakesoul.utils.{DataFileInfo, MaterialViewInfo}
+import org.apache.spark.sql.lakesoul.utils.{DataFileInfo}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.util.SerializableConfiguration
 
@@ -42,8 +42,6 @@ trait TransactionalWrite {
   protected var commitType: Option[CommitType]
 
   protected var shortTableName: Option[String]
-
-  protected var materialInfo: Option[MaterialViewInfo]
 
   protected var hasWritten = false
 

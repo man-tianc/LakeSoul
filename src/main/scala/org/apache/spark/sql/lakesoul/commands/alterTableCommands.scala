@@ -19,7 +19,7 @@ package org.apache.spark.sql.lakesoul.commands
 import org.apache.spark.sql.catalyst.analysis.{Resolver, UnresolvedAttribute}
 import org.apache.spark.sql.catalyst.plans.logical.{IgnoreCachedData, QualifiedColType}
 import org.apache.spark.sql.connector.catalog.TableChange.{After, ColumnPosition, First}
-import org.apache.spark.sql.execution.command.RunnableCommand
+import org.apache.spark.sql.execution.command.LeafRunnableCommand
 import org.apache.spark.sql.execution.datasources.parquet.ParquetSchemaConverter
 import org.apache.spark.sql.lakesoul.catalog.LakeSoulTableV2
 import org.apache.spark.sql.lakesoul.exception.LakeSoulErrors
@@ -58,7 +58,7 @@ trait AlterTableCommand extends Command {
 case class AlterTableSetPropertiesCommand(
                                            table: LakeSoulTableV2,
                                            configuration: Map[String, String])
-  extends RunnableCommand with AlterTableCommand with IgnoreCachedData {
+  extends LeafRunnableCommand with AlterTableCommand with IgnoreCachedData {
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
     val tc = startTransaction()
@@ -86,7 +86,7 @@ case class AlterTableUnsetPropertiesCommand(
                                              table: LakeSoulTableV2,
                                              propKeys: Seq[String],
                                              ifExists: Boolean)
-  extends RunnableCommand with AlterTableCommand with IgnoreCachedData {
+  extends LeafRunnableCommand with AlterTableCommand with IgnoreCachedData {
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
     val tc = startTransaction()
@@ -123,7 +123,7 @@ case class AlterTableUnsetPropertiesCommand(
 case class AlterTableAddColumnsCommand(
                                         table: LakeSoulTableV2,
                                         colsToAddWithPosition: Seq[QualifiedColType])
-  extends RunnableCommand with AlterTableCommand with IgnoreCachedData {
+  extends LeafRunnableCommand with AlterTableCommand with IgnoreCachedData {
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
     val tc = startTransaction()
@@ -164,7 +164,7 @@ case class AlterTableAddColumnsCommand(
     }
 
     SchemaUtils.checkColumnNameDuplication(newSchema, "in adding columns")
-    ParquetSchemaConverter.checkFieldNames(SchemaUtils.explodeNestedFieldNames(newSchema))
+    ParquetSchemaConverter.checkFieldNames(newSchema)
 
     val newTableInfo = tableInfo.copy(table_schema = newSchema.json)
     tc.commit(Seq.empty[DataFileInfo], Seq.empty[DataFileInfo], newTableInfo)
@@ -179,7 +179,7 @@ case class AlterTableAddColumnsCommand(
 
       val field = StructField(col.name.last, col.dataType, col.nullable, builder.build())
 
-      Some((col.name.init, field, col.position))
+      Some((col.name.init, field, col.position.map(_.position)))
     }
   }
 
@@ -202,7 +202,7 @@ case class AlterTableChangeColumnCommand(
                                           columnName: String,
                                           newColumn: StructField,
                                           colPosition: Option[ColumnPosition])
-  extends RunnableCommand with AlterTableCommand with IgnoreCachedData {
+  extends LeafRunnableCommand with AlterTableCommand with IgnoreCachedData {
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
     val tc = startTransaction()
@@ -344,7 +344,7 @@ case class AlterTableChangeColumnCommand(
 case class AlterTableReplaceColumnsCommand(
                                             table: LakeSoulTableV2,
                                             columns: Seq[StructField])
-  extends RunnableCommand with AlterTableCommand with IgnoreCachedData {
+  extends LeafRunnableCommand with AlterTableCommand with IgnoreCachedData {
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
     val tc = startTransaction()
@@ -364,7 +364,7 @@ case class AlterTableReplaceColumnsCommand(
       .asInstanceOf[StructType]
 
     SchemaUtils.checkColumnNameDuplication(newSchema, "in replacing columns")
-    ParquetSchemaConverter.checkFieldNames(SchemaUtils.explodeNestedFieldNames(newSchema))
+    ParquetSchemaConverter.checkFieldNames(newSchema)
 
     val newTableInfo = tableInfo.copy(table_schema = newSchema.json)
     tc.commit(Seq.empty[DataFileInfo], Seq.empty[DataFileInfo], newTableInfo)

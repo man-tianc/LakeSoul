@@ -36,6 +36,9 @@ case class CheckInvariant(child: Expression,
 
   override def flatArguments: Iterator[Any] = Iterator(child)
 
+  override protected def withNewChildInternal(newChild: Expression): Expression =
+    copy(child = newChild)
+
   private def assertRule(input: InternalRow): Unit = invariant.rule match {
     case NotNull if child.eval(input) == null =>
       throw InvariantViolationException(invariant, "")

@@ -110,7 +110,7 @@ trait MetaCommitSuiteBase extends QueryTest
           newPartitionInfoArr,
           CommitType(commitType))
 
-        MetaCommit.doMetaCommit(metaInfo, changeSchema, CommitOptions(None, None))
+        MetaCommit.doMetaCommit(metaInfo, changeSchema, CommitOptions(None))
         partitionInfoArr = MetaVersion.getAllPartitionInfo(tableInfo.table_id)
         assert(partitionInfoArr.map(_.read_version).forall(_ == 2))
         assert(partitionInfoArr.forall(m => {
@@ -166,7 +166,7 @@ trait MetaCommitSuiteBase extends QueryTest
         for (i <- 0 until taskNum) {
           pool.execute(new Runnable {
             override def run(): Unit = {
-              MetaCommit.doMetaCommit(arrMetaInfo(i), false, CommitOptions(None, None))
+              MetaCommit.doMetaCommit(arrMetaInfo(i), false, CommitOptions(None))
             }
           })
 
@@ -244,7 +244,7 @@ class MetaCommitSuite extends MetaCommitSuiteBase {
         tableInfo,
         newPartitionInfoArr2,
         CommitType("simple"))
-      MetaCommit.doMetaCommit(metaInfo2, false, CommitOptions(None, None))
+      MetaCommit.doMetaCommit(metaInfo2, false, CommitOptions(None))
 
       partitionInfoArr = MetaVersion.getAllPartitionInfo(tableInfo.table_id)
       assert(
@@ -282,10 +282,10 @@ class MetaCommitSuite extends MetaCommitSuiteBase {
         newPartitionInfoArr2,
         CommitType("simple"))
 
-      MetaCommit.doMetaCommit(metaInfo1, false, CommitOptions(None, None))
+      MetaCommit.doMetaCommit(metaInfo1, false, CommitOptions(None))
 
       val e = intercept[MetaRerunException](
-        MetaCommit.doMetaCommit(metaInfo2, false, CommitOptions(None, None)))
+        MetaCommit.doMetaCommit(metaInfo2, false, CommitOptions(None)))
       assert(e.getMessage.contains("Another job added file"))
 
     })
@@ -310,10 +310,10 @@ class MetaCommitSuite extends MetaCommitSuiteBase {
         newPartitionInfoArr2,
         CommitType("compaction"))
 
-      MetaCommit.doMetaCommit(metaInfo1, false, CommitOptions(None, None))
+      MetaCommit.doMetaCommit(metaInfo1, false, CommitOptions(None))
 
       val e = intercept[MetaRerunException](
-        MetaCommit.doMetaCommit(metaInfo2, false, CommitOptions(None, None)))
+        MetaCommit.doMetaCommit(metaInfo2, false, CommitOptions(None)))
       assert(e.getMessage.contains("deleted by another job during write_version="))
 
     })
@@ -349,7 +349,7 @@ class MetaCommitSuite extends MetaCommitSuiteBase {
 
 
       MetaCommit.takeSchemaLock(metaInfo1)
-      MetaCommit.doMetaCommit(metaInfo2, true, CommitOptions(None, None))
+      MetaCommit.doMetaCommit(metaInfo2, true, CommitOptions(None))
       val currentTableInfo = MetaVersion.getTableInfo(tableName)
       assert(currentTableInfo.schema_version == tableInfo.schema_version + 1 &&
         currentTableInfo.table_schema.equals(newSchema2))
@@ -366,7 +366,7 @@ class MetaCommitSuite extends MetaCommitSuiteBase {
         CommitType("delta"))
 
       val e = intercept[AnalysisException] {
-        MetaCommit.doMetaCommit(metaInfo3, true, CommitOptions(None, None))
+        MetaCommit.doMetaCommit(metaInfo3, true, CommitOptions(None))
       }
 
       assert(e.getMessage().contains("Schema has been changed for table"))

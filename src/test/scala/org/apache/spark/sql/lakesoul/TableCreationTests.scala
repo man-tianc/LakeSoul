@@ -17,9 +17,6 @@
 package org.apache.spark.sql.lakesoul
 
 import com.dmetasoul.lakesoul.tables.LakeSoulTable
-
-import java.io.File
-import java.util.Locale
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.TableIdentifier
@@ -29,13 +26,14 @@ import org.apache.spark.sql.connector.catalog.{Identifier, Table, TableCatalog}
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.lakesoul.test.{LakeSoulSQLCommandTest, LakeSoulTestUtils}
 import org.apache.spark.sql.lakesoul.utils.DataFileInfo
-import org.apache.spark.sql.lakesoul.SnapshotManagement
 import org.apache.spark.sql.test.SharedSparkSession
 import org.apache.spark.sql.types.{MetadataBuilder, StructType}
 import org.apache.spark.util.Utils
 import org.scalatest.matchers.must.Matchers.contain
 import org.scalatest.matchers.should.Matchers.convertToAnyShouldWrapper
 
+import java.io.File
+import java.util.Locale
 import scala.language.implicitConversions
 
 trait TableCreationTests

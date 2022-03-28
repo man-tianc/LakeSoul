@@ -16,8 +16,9 @@
 
 package org.apache.spark.sql.execution.datasources.v2.parquet
 
-import java.util.Locale
+import com.dmetasoul.lakesoul.meta.MetaUtils.sqlConf
 
+import java.util.Locale
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.parquet.hadoop.ParquetInputFormat
@@ -25,7 +26,7 @@ import org.apache.spark.sql.catalyst.expressions.Expression
 import org.apache.spark.sql.catalyst.expressions.codegen.GenerateUnsafeProjection
 import org.apache.spark.sql.connector.read.PartitionReaderFactory
 import org.apache.spark.sql.execution.PartitionedFileUtil
-import org.apache.spark.sql.execution.datasources.parquet.{ParquetReadSupport, ParquetWriteSupport}
+import org.apache.spark.sql.execution.datasources.parquet.{ParquetOptions, ParquetReadSupport, ParquetWriteSupport}
 import org.apache.spark.sql.execution.datasources.v2.FileScan
 import org.apache.spark.sql.execution.datasources.{BucketingUtils, FilePartition, PartitionedFile, PartitioningAwareFileIndex}
 import org.apache.spark.sql.internal.SQLConf
@@ -36,6 +37,8 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
 import org.apache.spark.sql.{AnalysisException, SparkSession}
 import org.apache.spark.util.SerializableConfiguration
+
+import scala.collection.JavaConverters.mapAsScalaMapConverter
 
 case class BucketParquetScan(sparkSession: SparkSession,
                              hadoopConf: Configuration,
@@ -99,7 +102,8 @@ case class BucketParquetScan(sparkSession: SparkSession,
       logInfo("================  bucket scan no async  ==============================")
 
       ParquetPartitionReaderFactory(sparkSession.sessionState.conf, broadcastedConf,
-        dataSchema, readDataSchema, readPartitionSchema, pushedFilters)
+        dataSchema, readDataSchema, readPartitionSchema, pushedFilters,
+        new ParquetOptions(options.asCaseSensitiveMap.asScala.toMap, sqlConf))
     }
   }
 

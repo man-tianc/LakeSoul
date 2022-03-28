@@ -37,7 +37,7 @@ trait MergeOperator[T] extends Serializable {
 
     def builder(children: Seq[Expression]) = udf.apply(children.map(Column.apply): _*).expr
 
-    spark.sessionState.functionRegistry.registerFunction(funIdentName, info, builder)
+    spark.sessionState.functionRegistry.registerFunction(funIdentName, info, builder _)
   }
 
   private def getUdf(name: String): SparkUserDefinedFunction = {

@@ -18,14 +18,13 @@ package org.apache.spark.sql.lakesoul.commands
 
 import org.apache.spark.sql.catalyst.expressions.And
 import org.apache.spark.sql.catalyst.plans.QueryPlan
+import org.apache.spark.sql.execution.command.LeafRunnableCommand
 import org.apache.spark.sql.lakesoul._
 import org.apache.spark.sql.lakesoul.exception.LakeSoulErrors
 import org.apache.spark.sql.lakesoul.utils.DataFileInfo
-//import org.apache.spark.sql.lakesoul.actions.AddFile
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.expressions.{Alias, AttributeReference, Literal, NamedExpression, PredicateHelper}
 import org.apache.spark.sql.catalyst.plans.logical._
-import org.apache.spark.sql.execution.command.RunnableCommand
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.lakesoul.schema.ImplicitMetadataOperation
 import org.apache.spark.sql.lakesoul.sources.LakeSoulSQLConf
@@ -45,7 +44,7 @@ case class UpsertCommand(source: LogicalPlan,
                          target: LogicalPlan,
                          targetSnapshotManagement: SnapshotManagement,
                          conditionString: String,
-                         migratedSchema: Option[StructType]) extends RunnableCommand
+                         migratedSchema: Option[StructType]) extends LeafRunnableCommand
   with Command with PredicateHelper with AnalysisHelper with ImplicitMetadataOperation {
 
   override def innerChildren: Seq[QueryPlan[_]] = Seq(target, source)

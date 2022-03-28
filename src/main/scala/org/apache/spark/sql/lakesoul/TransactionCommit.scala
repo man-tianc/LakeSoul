@@ -111,9 +111,6 @@ trait Transaction extends TransactionalWrite with Logging {
   /** Whether this table has a short table name */
   override protected var shortTableName: Option[String] = None
 
-  /** Whether this table is a material view */
-  override protected var materialInfo: Option[MaterialViewInfo] = None
-
   def setCommitType(value: String): Unit = {
     assert(commitType.isEmpty, "Cannot set commit type more than once in a transaction.")
     commitType = Some(CommitType(value))
@@ -128,13 +125,6 @@ trait Transaction extends TransactionalWrite with Logging {
     if (tableInfo.short_table_name.isEmpty) {
       shortTableName = Some(value)
     }
-  }
-
-  def setMaterialInfo(value: MaterialViewInfo): Unit = {
-    assert(shortTableName.isDefined || tableInfo.short_table_name.isDefined,
-      "Material view should has a short table name")
-    assert(materialInfo.isEmpty, "Cannot set materialInfo more than once in a transaction.")
-    materialInfo = Some(value)
   }
 
   def isFirstCommit: Boolean = snapshot.isFirstCommit
@@ -206,7 +196,7 @@ trait Transaction extends TransactionalWrite with Logging {
 
   protected def verifyNewMetadata(table_info: TableInfo): Unit = {
     SchemaUtils.checkColumnNameDuplication(table_info.schema, "in the TableInfo update")
-    ParquetSchemaConverter.checkFieldNames(SchemaUtils.explodeNestedFieldNames(table_info.data_schema))
+    ParquetSchemaConverter.checkFieldNames(table_info.data_schema)
   }
 
 
@@ -254,7 +244,6 @@ trait Transaction extends TransactionalWrite with Logging {
       assert(!committed, "Transaction already committed.")
 
       if (isFirstCommit) {
-        val is_material_view = if (materialInfo.isDefined) true else false
         MetaVersion.createNewTable(
           table_name,
           tableInfo.table_id,
@@ -263,7 +252,6 @@ trait Transaction extends TransactionalWrite with Logging {
           tableInfo.hash_column,
           toCassandraSetting(tableInfo.configuration),
           tableInfo.bucket_num,
-          is_material_view
         )
       }
 
@@ -370,7 +358,7 @@ trait Transaction extends TransactionalWrite with Logging {
         batch_id = batch_id)
 
       try {
-        val commitOptions = CommitOptions(shortTableName, materialInfo)
+        val commitOptions = CommitOptions(shortTableName)
         val changeSchema = !isFirstCommit && newTableInfo.nonEmpty
         MetaCommit.doMetaCommit(meta_info, changeSchema, commitOptions)
       } catch {

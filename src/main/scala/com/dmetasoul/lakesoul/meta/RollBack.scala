@@ -18,7 +18,6 @@ package com.dmetasoul.lakesoul.meta
 
 import java.util.concurrent.TimeUnit
 
-import MetaCommit.{unlockMaterialRelation, unlockMaterialViewName}
 import UndoLog._
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.lakesoul.utils.{CommitOptions, MetaInfo, RelationTable}
@@ -44,25 +43,6 @@ object RollBack extends Logging {
       if (commitOptions.shortTableName.isDefined) {
         MetaVersion.deleteShortTableName(commitOptions.shortTableName.get, meta_info.table_info.table_name)
         deleteUndoLog(UndoLogType.ShortTableName.toString, table_id, commit_id)
-      }
-
-      if (commitOptions.materialInfo.isDefined) {
-        val shortTableName = if (commitOptions.shortTableName.isDefined) {
-          commitOptions.shortTableName.get
-        } else {
-          meta_info.table_info.short_table_name.get
-        }
-        //unlock material view
-        unlockMaterialViewName(commit_id, shortTableName)
-        //unlock material relation
-        commitOptions.materialInfo.get.relationTables.foreach(table => {
-          unlockMaterialRelation(commit_id = commit_id, table_id = table.tableId)
-        })
-        //delete undo log
-        deleteUndoLog(
-          commit_type = UndoLogType.Material.toString,
-          table_id = meta_info.table_info.table_id,
-          commit_id = commit_id)
       }
 
       for (partition_info <- partition_info_arr) {
@@ -161,17 +141,6 @@ object RollBack extends Logging {
   private def rollBackMaterialView(table_id: String, commit_id: String): Unit = {
     val info = getUndoLogInfo(UndoLogType.Material.toString, table_id, commit_id)
     if (info.nonEmpty) {
-      //unlock material view
-      unlockMaterialViewName(commit_id, info.head.short_table_name)
-
-      if (info.head.is_creating_view) {
-        //unlock material relation
-        info.head.relation_tables.split(",").map(m => RelationTable.build(m))
-          .foreach(table => {
-            unlockMaterialRelation(commit_id = commit_id, table_id = table.tableId)
-          })
-      }
-
       //delete undo log
       deleteUndoLog(
         commit_type = UndoLogType.Material.toString,

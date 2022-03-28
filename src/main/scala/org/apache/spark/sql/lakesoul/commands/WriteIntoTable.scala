@@ -17,11 +17,11 @@
 package org.apache.spark.sql.lakesoul.commands
 
 import org.apache.spark.sql._
-import org.apache.spark.sql.execution.command.RunnableCommand
+import org.apache.spark.sql.execution.command.LeafRunnableCommand
 import org.apache.spark.sql.lakesoul.exception.LakeSoulErrors
 import org.apache.spark.sql.lakesoul.schema.ImplicitMetadataOperation
 import org.apache.spark.sql.lakesoul.utils.DataFileInfo
-import org.apache.spark.sql.lakesoul.{PartitionFilter, SnapshotManagement, LakeSoulOptions, TransactionCommit}
+import org.apache.spark.sql.lakesoul.{LakeSoulOptions, PartitionFilter, SnapshotManagement, TransactionCommit}
 
 /**
   * Used to write a [[DataFrame]] into a lakesoul table.
@@ -46,7 +46,7 @@ case class WriteIntoTable(snapshotManagement: SnapshotManagement,
                           options: LakeSoulOptions,
                           configuration: Map[String, String],
                           data: DataFrame)
-  extends RunnableCommand
+  extends LeafRunnableCommand
     with ImplicitMetadataOperation
     with Command {
 

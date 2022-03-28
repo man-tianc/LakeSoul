@@ -18,29 +18,29 @@ package org.apache.spark.sql.lakesoul.catalog
 
 import com.dmetasoul.lakesoul.meta.MetaVersion
 import com.dmetasoul.lakesoul.tables.LakeSoulTable
-
-import java.util
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.catalyst.analysis.{NoSuchDatabaseException, NoSuchNamespaceException, NoSuchTableException, UnresolvedAttribute}
+import org.apache.spark.sql.catalyst.analysis.{NoSuchDatabaseException, NoSuchNamespaceException, NoSuchTableException, ResolvedFieldName, ResolvedFieldPosition, UnresolvedAttribute, UnresolvedFieldName, UnresolvedFieldPosition}
 import org.apache.spark.sql.catalyst.catalog._
 import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, QualifiedColType}
 import org.apache.spark.sql.connector.catalog.TableCapability._
 import org.apache.spark.sql.connector.catalog.TableChange._
 import org.apache.spark.sql.connector.catalog._
 import org.apache.spark.sql.connector.expressions.{BucketTransform, FieldReference, IdentityTransform, Transform}
-import org.apache.spark.sql.connector.write.{LogicalWriteInfo, V1WriteBuilder, WriteBuilder}
+import org.apache.spark.sql.connector.write.{LogicalWriteInfo, V1Write, WriteBuilder}
 import org.apache.spark.sql.execution.datasources.parquet.ParquetSchemaConverter
 import org.apache.spark.sql.execution.datasources.{DataSource, PartitioningUtils}
 import org.apache.spark.sql.internal.SQLConf
-import org.apache.spark.sql.sources.InsertableRelation
 import org.apache.spark.sql.lakesoul.commands._
 import org.apache.spark.sql.lakesoul.exception.LakeSoulErrors
 import org.apache.spark.sql.lakesoul.sources.LakeSoulSourceUtils
 import org.apache.spark.sql.lakesoul.{LakeSoulConfig, LakeSoulUtils}
+import org.apache.spark.sql.sources.InsertableRelation
 import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.sql.{AnalysisException, DataFrame, SparkSession}
 
+import java.text.FieldPosition
+import java.util
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
@@ -111,7 +111,7 @@ class LakeSoulCatalog(val spark: SparkSession) extends DelegatingCatalogExtensio
 
     val withDb = verifyTableAndSolidify(tableDesc, None)
 
-    ParquetSchemaConverter.checkFieldNames(tableDesc.schema.fieldNames)
+    ParquetSchemaConverter.checkFieldNames(tableDesc.schema)
     CreateTableCommand(
       withDb,
       getExistingTableIfExists(tableDesc),
@@ -329,7 +329,7 @@ class LakeSoulCatalog(val spark: SparkSession) extends DelegatingCatalogExtensio
 
     override def capabilities(): util.Set[TableCapability] = Set(V1_BATCH_WRITE).asJava
 
-    override def newWriteBuilder(info: LogicalWriteInfo): V1WriteBuilder = {
+    override def newWriteBuilder(info: LogicalWriteInfo): WriteBuilder = {
       // TODO: We now pass both properties and options into CreateTableCommand, because
       // it wasn't supported in the initial APIs, but with DFWriterV2, we should actually separate
       // them
@@ -341,12 +341,15 @@ class LakeSoulCatalog(val spark: SparkSession) extends DelegatingCatalogExtensio
     /*
      * WriteBuilder for creating a lakesoul table.
      */
-    private class LakeSoulV1WriteBuilder extends WriteBuilder with V1WriteBuilder {
-      override def buildForV1Write(): InsertableRelation = {
-        new InsertableRelation {
-          override def insert(data: DataFrame, overwrite: Boolean): Unit = {
-            asSelectQuery = Option(data)
-          }
+    private class LakeSoulV1WriteBuilder extends WriteBuilder {
+      override def build(): V1Write = {
+        new V1Write {
+          override def toInsertableRelation: InsertableRelation =
+            new InsertableRelation {
+              override def insert(data: DataFrame, overwrite: Boolean): Unit = {
+                asSelectQuery = Option(data)
+              }
+            }
         }
       }
     }
@@ -376,11 +379,13 @@ class LakeSoulCatalog(val spark: SparkSession) extends DelegatingCatalogExtensio
           table,
           newColumns.asInstanceOf[Seq[AddColumn]].map { col =>
             QualifiedColType(
-              col.fieldNames(),
+              Option(UnresolvedFieldName(col.fieldNames())),
+              col.fieldNames().last,
               col.dataType(),
               col.isNullable,
               Option(col.comment()),
-              Option(col.position()))
+              Option(UnresolvedFieldPosition(col.position()))
+            )
           }).run(spark)
 
       case (t, newProperties) if t == classOf[SetProperty] =>

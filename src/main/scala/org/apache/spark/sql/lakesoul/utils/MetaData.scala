@@ -20,8 +20,6 @@ import com.dmetasoul.lakesoul.meta.{CommitState, CommitType, MetaUtils}
 import com.fasterxml.jackson.annotation.JsonIgnore
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.execution.datasources.BucketingUtils
-import org.apache.spark.sql.lakesoul.LakeSoulTableProperties
-import org.apache.spark.sql.lakesoul.material_view.QueryInfo
 import org.apache.spark.sql.types.{DataType, StructType}
 
 case class MetaInfo(table_info: TableInfo,
@@ -195,21 +193,7 @@ case class Format(provider: String = "parquet",
                   options: Map[String, String] = Map.empty)
 
 
-case class CommitOptions(shortTableName: Option[String],
-                         materialInfo: Option[MaterialViewInfo])
-
-/**
-  * Material View Info
-  *
-  * @param sqlText        sql in text format to create material view
-  * @param relationTables relation tables, the value is a format "table_id->table_name,table1->oss://test/path"
-  */
-case class MaterialViewInfo(viewName: String,
-                            sqlText: String,
-                            relationTables: Seq[RelationTable],
-                            autoUpdate: Boolean,
-                            isCreatingView: Boolean = false,
-                            info: QueryInfo)
+case class CommitOptions(shortTableName: Option[String] )
 
 case class RelationTable(tableName: String,
                          tableId: String,

@@ -19,8 +19,7 @@ package org.apache.spark.sql.lakesoul.schema
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.lakesoul.TransactionCommit
 import org.apache.spark.sql.lakesoul.exception.{MetadataMismatchErrorBuilder, LakeSoulErrors}
-import org.apache.spark.sql.lakesoul.material_view.{ConstructQueryInfo, MaterialViewUtils}
-import org.apache.spark.sql.lakesoul.utils.{MaterialViewInfo, PartitionUtils, RelationTable, TableInfo}
+import org.apache.spark.sql.lakesoul.utils.{PartitionUtils, RelationTable, TableInfo}
 import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.sql.{Dataset, SparkSession}
 
@@ -109,35 +108,6 @@ trait ImplicitMetadataOperation extends Logging {
     if (shortTableName.isDefined) {
       tc.setShortTableName(shortTableName.get)
 
-      //set material info if creating material view
-      if (createMaterialView) {
-        if (!tc.isFirstCommit) {
-          throw LakeSoulErrors.tableExistsException(tc.tableInfo.table_name)
-        }
-        assert(materialSQLText.nonEmpty)
-        assert(data.isDefined)
-
-        //parse material info from logical plan
-        val construct = new ConstructQueryInfo
-        val plan = data.get.logicalPlan
-        MaterialViewUtils.parseOutputInfo(plan, construct)
-        MaterialViewUtils.parseMaterialInfo(plan, construct, false)
-        val viewInfo = construct.buildQueryInfo()
-
-        //todo: merge it into above parse
-        //get relation table info
-        val relationTables = new ArrayBuffer[RelationTable]()
-        MaterialViewUtils.parseRelationTableInfo(data.get.queryExecution.executedPlan, relationTables)
-
-        tc.setMaterialInfo(
-          MaterialViewInfo(
-            shortTableName.get,
-            materialSQLText,
-            relationTables,
-            materialAutoUpdate,
-            true,
-            viewInfo))
-      }
     }
 
     val normalizedRangePartitionCols =

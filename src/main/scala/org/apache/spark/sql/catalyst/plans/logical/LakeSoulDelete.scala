@@ -22,6 +22,8 @@ import org.apache.spark.sql.catalyst.expressions.{Attribute, Expression}
 // added in the master branch: `DeleteFromTable`.
 case class LakeSoulDelete(child: LogicalPlan,
                           condition: Option[Expression])
-  extends UnaryNode {
+  extends UnaryCommand {
   override def output: Seq[Attribute] = Seq.empty
+  override protected def withNewChildInternal(newChild: LogicalPlan): LogicalPlan =
+    copy(child = newChild)
 }
