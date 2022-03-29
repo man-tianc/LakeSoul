@@ -384,7 +384,11 @@ class LakeSoulCatalog(val spark: SparkSession) extends DelegatingCatalogExtensio
               col.dataType(),
               col.isNullable,
               Option(col.comment()),
-              Option(UnresolvedFieldPosition(col.position()))
+              if (col.position() == null) {
+                None
+              } else {
+                Option(UnresolvedFieldPosition(col.position()))
+              }
             )
           }).run(spark)
 
