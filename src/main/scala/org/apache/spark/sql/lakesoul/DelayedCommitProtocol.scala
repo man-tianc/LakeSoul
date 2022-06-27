@@ -17,9 +17,9 @@
 package org.apache.spark.sql.lakesoul
 
 import com.dmetasoul.lakesoul.meta.MetaUtils
-
 import java.net.URI
 import java.util.UUID
+
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.mapreduce.{JobContext, TaskAttemptContext}
 import org.apache.spark.internal.Logging
@@ -29,12 +29,13 @@ import org.apache.spark.sql.catalyst.expressions.Cast
 import org.apache.spark.sql.lakesoul.utils.{DataFileInfo, DateFormatter, PartitionUtils, TimestampFormatter}
 import org.apache.spark.sql.types.StringType
 
+import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
 /**
-  * Writes out the files to `path` and returns a list of them in `addedStatuses`.
-  */
+ * Writes out the files to `path` and returns a list of them in `addedStatuses`.
+ */
 class DelayedCommitProtocol(jobId: String,
                             path: String,
                             randomPrefixLength: Option[Int])
@@ -46,15 +47,20 @@ class DelayedCommitProtocol(jobId: String,
   @transient val addedStatuses = new ArrayBuffer[DataFileInfo]
 
   val timestampPartitionPattern = "yyyy-MM-dd HH:mm:ss[.S]"
-
-
+  @transient private var taskConsumed:mutable.HashMap[String,Long] = _
+  var jobUUID=""
+  var jobStart=0L
+  var jobEnd=0L
   override def setupJob(jobContext: JobContext): Unit = {
-
+    jobUUID=jobContext.getConfiguration.get("spark.sql.sources.writeJobUUID")
+    jobStart=System.currentTimeMillis()
   }
 
   override def commitJob(jobContext: JobContext, taskCommits: Seq[TaskCommitMessage]): Unit = {
     val fileStatuses = taskCommits.flatMap(_.obj.asInstanceOf[Seq[DataFileInfo]]).toArray
     addedStatuses ++= fileStatuses
+    jobEnd=System.currentTimeMillis()-jobStart
+    System.out.println("LakeSoul-Job: uuid="+jobUUID+ ",job time(ms):"+jobEnd)
   }
 
   override def abortJob(jobContext: JobContext): Unit = {
@@ -63,6 +69,8 @@ class DelayedCommitProtocol(jobId: String,
 
   override def setupTask(taskContext: TaskAttemptContext): Unit = {
     addedFiles = new ArrayBuffer[(Map[String, String], String)]
+    taskConsumed=new mutable.HashMap[String,Long]()
+    taskConsumed.put(taskContext.getTaskAttemptID.getTaskID.toString,System.currentTimeMillis())
   }
 
   protected def getFileName(taskContext: TaskAttemptContext, ext: String): String = {
@@ -132,6 +140,8 @@ class DelayedCommitProtocol(jobId: String,
 
   override def commitTask(taskContext: TaskAttemptContext): TaskCommitMessage = {
     //todo
+    val timeDuration=System.currentTimeMillis()-taskConsumed.getOrElse(taskContext.getTaskAttemptID.getTaskID.toString,0L)
+    System.out.println("LakeSoul-Task: Job uuid="+jobUUID+",task id:"+taskContext.getTaskAttemptID.getTaskID+ ",time(ms):"+timeDuration)
     if (addedFiles.nonEmpty) {
       val fs = new Path(path, addedFiles.head._2).getFileSystem(taskContext.getConfiguration)
       val statuses: Seq[DataFileInfo] = addedFiles.map { f =>
